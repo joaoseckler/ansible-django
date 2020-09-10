@@ -34,6 +34,13 @@
     - name: enable apache site
       command: a2ensite {{ project_name }}.conf
 
+    - name: send django secrets file
+      template:
+        follow: yes
+        src: files/secret_settings.py
+        dest: "{{ install_root }}/{{ project_name }}/{{ project_name }}/secret_settings.py"
+
+
     - name: django migrate
       django_manage:
         command: migrate
