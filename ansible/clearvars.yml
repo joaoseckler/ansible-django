@@ -75,6 +75,7 @@ system_packages:
   - python3-dev
   - virtualenv
   - libapache2-mod-wsgi-py3
+  - gettext
   # - python-psycopg2
 
 # vim:ft=ansible:

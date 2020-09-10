@@ -7,7 +7,7 @@
 
   tasks:
     - name: Clone/pull project repo
-      git: repo={{ project_repo }} dest={{ install_root }}/{{ project_name }} accept_hostkey=yes
+      git: repo={{ project_repo }} dest={{ install_root }}/{{ project_name }} accept_hostkey=yes force=yes
       # notify:
       # - restart gunicorn
 
@@ -22,6 +22,7 @@
       #   PATH: "{{ install_root }}/{{ project_name }}/.local/bin"
       # notify:
       # - restart gunicorn
+      #
 
     # - name: copy nginx config
     #   template: src=files/nginx.j2 dest=/etc/nginx/sites-enabled/{{ project_name }}.conf
@@ -34,12 +35,16 @@
     - name: enable apache site
       command: a2ensite {{ project_name }}.conf
 
+    - name: Execute makepages.py
+      shell:
+        cmd: ". {{ virtualenv_path }}/bin/activate && ./makepages.py && deactivate"
+        chdir: "{{ install_root }}/{{ project_name }}/"
+
     - name: send django secrets file
       template:
         follow: yes
         src: files/secret_settings.py
         dest: "{{ install_root }}/{{ project_name }}/{{ project_name }}/secret_settings.py"
-
 
     - name: django migrate
       django_manage:
@@ -51,6 +56,13 @@
     - name: django collectstatic
       django_manage:
         command: collectstatic
+        app_path: "{{ install_root }}/{{ project_name }}"
+        pythonpath: "{{ pythonpath }}"
+        virtualenv: "{{ virtualenv_path }}"
+
+    - name: django compilemessages
+      django_manage:
+        command: "compilemessages --locale pt"
         app_path: "{{ install_root }}/{{ project_name }}"
         pythonpath: "{{ pythonpath }}"
         virtualenv: "{{ virtualenv_path }}"
