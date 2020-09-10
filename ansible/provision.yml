@@ -1,5 +1,5 @@
 ---
-- hosts: servers
+- hosts: alice
   vars_files:
     - vars.yml
   gather_facts: false
@@ -7,29 +7,30 @@
 
   tasks:
     - name: Install system packages
-      apt: pkg={{ item }} update-cache=yes
-      with_items: "{{ system_packages }}"
+      apt: pkg={{ system_packages }} update-cache=yes
 
-    - name: Save ssh key to server
-      copy: src={{ ssh_private_key }} dest=/root/.ssh/id_rsa mode=600
+    # - name: Save ssh key to server
+    #   copy: src={{ ssh_private_key }} dest=/root/.ssh/id_rsa mode=600
 
     - name: Create directory for app
       file: path={{ install_root }}/{{ project_name }} state=directory
 
-    - name: make sure postgresql server is running
-      service: name=postgresql state=started
+    # We are using sqlite3
 
-    - name: create database
-      become_user: postgres
-      postgresql_db: name={{ db_name }}
+    # - name: make sure postgresql server is running
+    #   service: name=postgresql state=started
 
-    - name: create database user
-      become_user: postgres
-      postgresql_user: db={{ db_name }} name={{ db_user }} password={{ db_password }} priv=ALL
+    # - name: create database
+    #   become_user: postgres
+    #   postgresql_db: name={{ db_name }}
 
-    - name: remove default nginx site
-      file: path=/etc/nginx/sites-enabled/default state=absent
+    # - name: create database user
+    #   become_user: postgres
+    #   postgresql_user: db={{ db_name }} name={{ db_user }} password={{ db_password }} priv=ALL
 
-- include: deploy.yml
+    # - name: remove default nginx site
+    #   file: path=/etc/nginx/sites-enabled/default state=absent
+
+- import_playbook: deploy.yml
 
 # vim:ft=ansible:

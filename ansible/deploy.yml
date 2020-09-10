@@ -1,5 +1,5 @@
 ---
-- hosts: servers
+- hosts: alice
   vars_files:
     - vars.yml
   gather_facts: false
@@ -8,40 +8,82 @@
   tasks:
     - name: Clone/pull project repo
       git: repo={{ project_repo }} dest={{ install_root }}/{{ project_name }} accept_hostkey=yes
-      notify:
-      - restart gunicorn
+      # notify:
+      # - restart gunicorn
+
+    - name: Git post-update hook (makepages.py)
+      template: src=files/post-update.j2 dest={{ install_root }}/{{ project_name }}/.git/hooks/post-update mode=preserve
 
     - name: install python packages
-      pip: requirements={{ install_root }}/{{ project_name }}/requirements.txt
-      notify:
-      - restart gunicorn
+      pip:
+        requirements: "{{ install_root }}/{{ project_name }}/requirements.txt"
+        virtualenv: "{{ virtualenv_path }}"
+      # environment:
+      #   PATH: "{{ install_root }}/{{ project_name }}/.local/bin"
+      # notify:
+      # - restart gunicorn
 
-    - name: copy nginx config
-      template: src=files/nginx.j2 dest=/etc/nginx/sites-enabled/{{ project_name }}.conf
-      notify:
-      - restart nginx
+    # - name: copy nginx config
+    #   template: src=files/nginx.j2 dest=/etc/nginx/sites-enabled/{{ project_name }}.conf
+    #   notify:
+    #   - restart nginx
+    #
+    - name: copy apache config
+      template: src=files/apache.j2 dest=/etc/apache2/sites-available/{{ project_name }}.conf
+
+    - name: enable apache site
+      command: a2ensite {{ project_name }}.conf
 
     - name: django migrate
-      django_manage: command=migrate app_path={{ install_root }}/{{ project_name }} pythonpath={{ pythonpath }}
+      django_manage:
+        command: migrate
+        app_path: "{{ install_root }}/{{ project_name }}"
+        pythonpath: "{{ pythonpath }}"
+        virtualenv: "{{ virtualenv_path }}"
 
     - name: django collectstatic
-      django_manage: command=collectstatic app_path={{ install_root }}/{{ project_name }} pythonpath={{ pythonpath }}
+      django_manage:
+        command: collectstatic
+        app_path: "{{ install_root }}/{{ project_name }}"
+        pythonpath: "{{ pythonpath }}"
+        virtualenv: "{{ virtualenv_path }}"
 
-    - name: copy gunicorn config
-      template: src=files/gunicorn.j2 dest=/etc/init/gunicorn.conf
-      notify:
-      - restart gunicorn
+    # - name: copy gunicorn config
+    #   template: src=files/gunicorn.j2 dest=/etc/init/gunicorn.conf
+    #   notify:
+    #   - restart gunicorn
 
-    - name: make sure nginx server is running
-      service: name=nginx state=started enabled=yes
+    # - name: make sure nginx server is running
+    #   service: name=nginx state=started enabled=yes
 
-    - name: make sure gunicorn server is running
-      service: name=gunicorn state=started enabled=yes
 
-  handlers: 
-    - name: restart nginx
-      service: name=nginx state=restarted
+    # - name: make sure gunicorn server is running
+    #   service: name=gunicorn state=started enabled=yes
+    - name: Enable wsgi apache module
+      apache2_module:
+        state: present
+        name: wsgi
 
-    - name: restart gunicorn
-      service: name=gunicorn state=restarted
+    # - name: Disable python module
+    #   apache2_module:
+    #     state: absent
+    #     name: python
+
+    - name: Give permission to apache use the folder
+      file:
+        path: "{{ install_root }}/{{ project_name }}"
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+
+    - name: make sure apache server is running
+      service: name=apache2 state=started enabled=yes
+
+  # handlers:
+  #   - name: restart nginx
+  #     service: name=nginx state=restarted
+
+  #   - name: restart gunicorn
+  #     service: name=gunicorn state=restarted
 # vim:ft=ansible:
